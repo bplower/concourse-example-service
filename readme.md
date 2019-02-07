@@ -2,6 +2,10 @@
 
 This repo contains the resources for running a concourse service, including it's pipelines pipelines
 
+This makes use of the following resources:
+- https://github.com/concourse/concourse-docker
+- https://github.com/telia-oss/github-pr-resource
+
 ## Startup
 
 1) docker-compose up

@@ -1,0 +1,81 @@
+---
+resource_types:
+- name: pull-request
+  type: docker-image
+  source:
+    repository: teliaoss/github-pr-resource
+
+resources:
+- name: example-repo
+  type: pull-request
+  check_every: 30s
+  source:
+    repository: bplower/concourse-example-repo
+    access_token: ((access_token))
+    paths:
+      - buildings-api-py/*
+      - docker-compose.yml
+
+jobs:
+- name: python-tests
+  plan:
+  - get: example-repo
+    trigger: true
+    version: every
+  - put: example-repo
+    params:
+      path: example-repo
+      context: python-tests
+      status: pending
+  - aggregate:
+    - task: test-lint
+      config:
+        platform: linux
+        image_resource:
+          type: docker-image
+          source:
+            repository: python
+            tag: 3.6-stretch
+        inputs:
+        - name: example-repo
+        run:
+          path: 'bash'
+          args:
+          - '-xce'
+          - |
+            cd example-repo/buildings-api-py
+            pip install -r requirements.txt
+            pip install -e .
+            make test-lint
+    - task: test-unittest
+      config:
+        platform: linux
+        image_resource:
+          type: docker-image
+          source:
+            repository: python
+            tag: 3.6-stretch
+        inputs:
+        - name: example-repo
+        run:
+          path: 'bash'
+          args:
+          - '-xce'
+          - |
+            cd example-repo/buildings-api-py
+            pip install -r requirements.txt
+            pip install -e .
+            make test-nose
+  on_failure:
+    put: example-repo
+    params:
+      path: example-repo
+      context: python-tests
+      status: failure
+  on_success:
+    put: example-repo
+    params:
+      path: example-repo
+      context: python-tests
+      status: success
+      comment: "All tests passed, you are clear to merge!"
